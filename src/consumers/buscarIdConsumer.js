@@ -3,6 +3,51 @@ import { verificarIDEnBD } from "../services/buscarIdService.js";
 import CustomError from "../utils/error.js";
 import { DateTime } from 'luxon';
 
+/**
+ * Inicia un consumidor de mensajes en RabbitMQ para verificar la existencia de un ID de chat.
+ *
+ * Este consumidor escucha en la cola `BuscarID`, verifica si el ID de chat existe en la base de datos,
+ * y envía el resultado a diferentes colas según el estado de la verificación.
+ *
+ * **Manejo de Errores:**
+ * - **Errores de Datos:** Si ocurre un error relacionado con los datos del mensaje (por ejemplo, un ID inválido),
+ *   el mensaje se envía a la cola `Errores_Data` con la siguiente estructura:
+ *   ```json
+ *   {
+ *     "id_chat": "<ID del chat>",
+ *     "error": "<Mensaje de error>",
+ *     "ms": "<Nombre del servicio que generó el error>",
+ *     "date": "<Fecha y hora del error>"
+ *   }
+ *   ```
+ * - **Errores del Sistema:** Si ocurre un error del sistema y después de 2 intentos fallidos de reintento,
+ *   el mensaje se envía a la cola `Errores_Sistema` con la siguiente estructura:
+ *   ```json
+ *   {
+ *     "id_chat": "<ID del chat>",
+ *     "error": "<Mensaje de error>",
+ *     "ms": "<Nombre del servicio que generó el error>",
+ *     "errordetails": "<Detalles adicionales del error>",
+ *     "date": "<Fecha y hora del error>"
+ *   }
+ *   ```
+ * - **Reintentos:** Si ocurre un error del sistema, el mensaje se reintenta hasta 2 veces antes de enviarlo
+ *   a la cola `Errores_Sistema`.
+ *
+ * **Flujo de Procesamiento:**
+ * 1. Si el ID de chat existe, el mensaje se envía a la cola `traer_data`.
+ * 2. Si el ID de chat no existe, el mensaje se envía a la cola `ms_gpt`.
+ * 3. En caso de errores, el mensaje se dirige a `Errores_Data` o `Errores_Sistema` según corresponda.
+ *
+ * @async
+ * @module startConsumer
+ * @throws {CustomError} Si ocurre un error durante la validación del mensaje o la consulta a la base de datos.
+ * @returns {Promise<void>} No devuelve un valor, pero mantiene el consumidor en funcionamiento para procesar mensajes entrantes.
+ *
+ * @example
+ * // Para iniciar el consumidor simplemente ejecuta el archivo:
+ * node startConsumer.js
+ */
 async function startConsumer() {
 
     const { channel } = await connectRabbitMQ();
