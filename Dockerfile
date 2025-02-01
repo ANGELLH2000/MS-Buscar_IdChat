@@ -1,5 +1,5 @@
 # Usar la imagen base de Node.js
-FROM node:18
+FROM node:22
 
 # Establecer el directorio de trabajo
 WORKDIR /app
@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 8080
 
 # Ejecutar la aplicación
-CMD ["node", "src/index.js"]
+CMD ["npm", "run", "dev"]
